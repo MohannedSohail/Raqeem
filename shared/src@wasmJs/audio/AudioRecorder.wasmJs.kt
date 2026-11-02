@@ -4,15 +4,17 @@ import org.moh.raqeem.project.model.RecordingResult
 
 actual class AudioRecorder {
     private var recording = false
+    private var currentFilePath: String = "stub_wasm.mp4"
 
     actual fun startRecording(outputFilePath: String) {
+        currentFilePath = outputFilePath
         recording = true
     }
 
     actual fun stopRecording(): RecordingResult? {
         if (!recording) return null
         recording = false
-        return RecordingResult(filePath = outputFilePath, durationMs = 2000L)
+        return RecordingResult(filePath = currentFilePath, durationMs = 2000L)
     }
 
     actual fun cancelRecording() {
@@ -23,4 +25,5 @@ actual class AudioRecorder {
 
     actual fun getAmplitude(): Float = if (recording) 0.5f else 0f
 }
+
 

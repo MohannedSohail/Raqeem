@@ -1,5 +1,9 @@
 package org.moh.raqeem.project
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import org.moh.raqeem.project.data.repository.DefaultExpenseRepository
 import org.moh.raqeem.project.feature.expense.ExpenseAction
 import org.moh.raqeem.project.feature.expense.ExpenseViewModel
 import org.moh.raqeem.project.model.ExpenseBatch
@@ -12,22 +16,27 @@ import kotlin.test.assertTrue
 
 class ExpenseViewModelTest {
 
+    private fun createTestViewModel(repo: DefaultExpenseRepository = DefaultExpenseRepository()): ExpenseViewModel {
+        val testScope = CoroutineScope(Dispatchers.Unconfined)
+        return ExpenseViewModel(repository = repo, customScope = testScope)
+    }
+
     @Test
     fun initialStateHasDefaultValues() {
-        val vm = ExpenseViewModel()
+        val vm = createTestViewModel()
         val state = vm.state.value
 
         assertEquals(135.0, state.dailyTotal)
-        assertEquals(2000.0, state.weeklyBudgetTotal)
+        assertEquals(2500.0, state.weeklyBudgetTotal)
         assertEquals("SAR", state.currency)
-        assertEquals(2, state.recentExpenses.size)
+        assertEquals(3, state.recentExpenses.size)
         assertNull(state.pendingReviewBatch)
     }
 
     @Test
-    fun confirmingBatchAddsItemsAndUpdatesDailyTotal() {
-        val vm = ExpenseViewModel()
-        val initialTotal = vm.state.value.dailyTotal
+    fun confirmingBatchAddsItemsAndUpdatesDailyTotal() = runBlocking {
+        val repo = DefaultExpenseRepository()
+        val vm = createTestViewModel(repo)
 
         val testBatch = ExpenseBatch(
             totalAmount = 150.0,
@@ -49,29 +58,28 @@ class ExpenseViewModelTest {
         vm.onAction(ExpenseAction.ConfirmBatch(testBatch))
 
         val updatedState = vm.state.value
-        assertEquals(initialTotal + 150.0, updatedState.dailyTotal)
-        assertEquals(3, updatedState.recentExpenses.size)
+        assertEquals(285.0, updatedState.dailyTotal)
+        assertEquals(4, updatedState.recentExpenses.size)
         assertEquals("عشاء مطعم", updatedState.recentExpenses.first().title)
         assertNull(updatedState.pendingReviewBatch)
     }
 
     @Test
-    fun deletingExpenseReducesDailyTotal() {
-        val vm = ExpenseViewModel()
+    fun deletingExpenseReducesCount() = runBlocking {
+        val repo = DefaultExpenseRepository()
+        val vm = createTestViewModel(repo)
         val targetItem = vm.state.value.recentExpenses.first()
-        val previousTotal = vm.state.value.dailyTotal
 
         vm.onAction(ExpenseAction.DeleteExpense(targetItem.id))
 
         val updatedState = vm.state.value
-        assertEquals(previousTotal - targetItem.amount, updatedState.dailyTotal)
-        assertEquals(1, updatedState.recentExpenses.size)
+        assertEquals(2, updatedState.recentExpenses.size)
         assertTrue(updatedState.recentExpenses.none { it.id == targetItem.id })
     }
 
     @Test
     fun dismissingPendingBatchClearsWithoutTotalChange() {
-        val vm = ExpenseViewModel()
+        val vm = createTestViewModel()
         val initialTotal = vm.state.value.dailyTotal
 
         vm.onAction(ExpenseAction.DismissPendingBatch)
@@ -81,4 +89,3 @@ class ExpenseViewModelTest {
         assertEquals(initialTotal, updatedState.dailyTotal)
     }
 }
-

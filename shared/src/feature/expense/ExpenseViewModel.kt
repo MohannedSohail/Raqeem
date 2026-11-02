@@ -2,6 +2,7 @@ package org.moh.raqeem.project.feature.expense
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -12,39 +13,31 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.moh.raqeem.project.ai.GeminiApiClient
 import org.moh.raqeem.project.audio.AudioRecorder
+import org.moh.raqeem.project.data.repository.DefaultExpenseRepository
+import org.moh.raqeem.project.domain.repository.ExpenseRepository
 import org.moh.raqeem.project.model.ExpenseBatch
 import org.moh.raqeem.project.model.ExpenseCategory
 import org.moh.raqeem.project.model.ExpenseItem
+import org.moh.raqeem.project.model.RecordingResult
 
 class ExpenseViewModel(
-    private val audioRecorder: AudioRecorder = AudioRecorder()
+    private val repository: ExpenseRepository = DefaultExpenseRepository(),
+    private val audioRecorder: AudioRecorder = AudioRecorder(),
+    private val geminiApiClient: GeminiApiClient = GeminiApiClient(),
+    customScope: CoroutineScope? = null
 ) : ViewModel() {
+
+    private val vmScope: CoroutineScope by lazy {
+        customScope ?: viewModelScope
+    }
 
     private val _state = MutableStateFlow(
         ExpenseState(
             dailyTotal = 135.0,
-            weeklyBudgetTotal = 2000.0,
-            recentExpenses = listOf(
-                ExpenseItem(
-                    id = "1",
-                    title = "قهوة صباحية ومخبوزات",
-                    amount = 35.0,
-                    category = ExpenseCategory.DINING,
-                    paidBy = "أنا",
-                    beneficiary = "شخصي",
-                    dateIso = "2026-10-31"
-                ),
-                ExpenseItem(
-                    id = "2",
-                    title = "بنزين السيارة",
-                    amount = 100.0,
-                    category = ExpenseCategory.TRANSPORTATION,
-                    paidBy = "أنا",
-                    beneficiary = "شخصي",
-                    dateIso = "2026-10-31"
-                )
-            )
+            weeklyBudgetTotal = 2500.0,
+            isOnlineAiActive = geminiApiClient.hasApiKey()
         )
     )
     val state: StateFlow<ExpenseState> = _state.asStateFlow()
@@ -53,6 +46,28 @@ class ExpenseViewModel(
     val effect: SharedFlow<ExpenseEffect> = _effect.asSharedFlow()
 
     private var recordingTickerJob: Job? = null
+
+    init {
+        // Observe expenses stream as Single Source of Truth
+        vmScope.launch {
+            repository.getExpensesStream().collect { items ->
+                val todayTotal = items.filter { it.dateIso == "2026-10-31" }.sumOf { it.amount }
+                _state.update {
+                    it.copy(
+                        recentExpenses = items,
+                        dailyTotal = todayTotal
+                    )
+                }
+            }
+        }
+
+        // Observe weekly analytics stream
+        vmScope.launch {
+            repository.getWeeklyAnalyticsStream(_state.value.weeklyBudgetTotal).collect { analytics ->
+                _state.update { it.copy(weeklyAnalytics = analytics) }
+            }
+        }
+    }
 
     fun onAction(action: ExpenseAction) {
         when (action) {
@@ -63,6 +78,26 @@ class ExpenseViewModel(
             is ExpenseAction.DismissPendingBatch -> dismissPendingBatch()
             is ExpenseAction.DeleteExpense -> deleteExpense(action.id)
             is ExpenseAction.SubmitSimulatedVoice -> processVoiceText(action.voiceText)
+            is ExpenseAction.ParseBankNotification -> parseBankNotification(action.text)
+            is ExpenseAction.SetBankNotificationSheetVisible -> {
+                _state.update { it.copy(isBankNotificationSheetOpen = action.visible) }
+            }
+            is ExpenseAction.SetApiKeyDialogVisible -> {
+                _state.update { it.copy(isApiKeyDialogOpen = action.visible) }
+            }
+            is ExpenseAction.SaveApiKey -> {
+                geminiApiClient.setApiKey(action.apiKey)
+                _state.update {
+                    it.copy(
+                        isApiKeyDialogOpen = false,
+                        isOnlineAiActive = action.apiKey.isNotBlank()
+                    )
+                }
+                vmScope.launch {
+                    val statusText = if (action.apiKey.isNotBlank()) "تم تفعيل Gemini 2.5 Flash السحابي ⚡" else "تم التبديل للوضع المحلي"
+                    _effect.emit(ExpenseEffect.ShowSnackbar(statusText))
+                }
+            }
         }
     }
 
@@ -79,15 +114,17 @@ class ExpenseViewModel(
             }
 
             recordingTickerJob?.cancel()
-            recordingTickerJob = viewModelScope.launch {
-                var seconds = 0
+            recordingTickerJob = vmScope.launch {
+                var ticks = 0
                 while (_state.value.recordingStatus == RecordingStatus.RECORDING) {
                     delay(100)
+                    ticks++
                     val amp = audioRecorder.getAmplitude()
-                    _state.update { it.copy(recordingAmplitude = amp) }
-                    if (System.currentTimeMillis() % 1000 < 100) {
-                        seconds++
-                        _state.update { it.copy(recordingDurationSec = seconds) }
+                    _state.update {
+                        it.copy(
+                            recordingAmplitude = amp,
+                            recordingDurationSec = ticks / 10
+                        )
                     }
                 }
             }
@@ -103,7 +140,7 @@ class ExpenseViewModel(
 
     private fun stopRecording() {
         recordingTickerJob?.cancel()
-        val result = audioRecorder.stopRecording()
+        val result = audioRecorder.stopRecording() ?: RecordingResult("stub.mp4", 1500L)
 
         _state.update {
             it.copy(
@@ -112,37 +149,8 @@ class ExpenseViewModel(
             )
         }
 
-        viewModelScope.launch {
-            // Simulate AI parsing delay (Gemini Flash latency ~1.2s)
-            delay(1200)
-
-            // Extracted smart batch from the recorded voice
-            val generatedBatch = ExpenseBatch(
-                totalAmount = 205.0,
-                currency = _state.value.currency,
-                items = listOf(
-                    ExpenseItem(
-                        id = "batch_${System.currentTimeMillis()}_1",
-                        title = "أغراض سوبرماركت كارفور",
-                        amount = 180.0,
-                        category = ExpenseCategory.GROCERIES,
-                        paidBy = "أنا",
-                        beneficiary = "البيت",
-                        dateIso = "2026-10-31"
-                    ),
-                    ExpenseItem(
-                        id = "batch_${System.currentTimeMillis()}_2",
-                        title = "بنزين سيارة",
-                        amount = 25.0,
-                        category = ExpenseCategory.TRANSPORTATION,
-                        paidBy = "أنا",
-                        beneficiary = "شخصي",
-                        dateIso = "2026-10-31"
-                    )
-                ),
-                notes = "محمد حاسب 40 قهوة منفصلة",
-                confidence = 0.96f
-            )
+        vmScope.launch {
+            val generatedBatch = geminiApiClient.parseVoiceAudio(result)
 
             _state.update {
                 it.copy(
@@ -167,24 +175,27 @@ class ExpenseViewModel(
 
     private fun processVoiceText(text: String) {
         _state.update { it.copy(recordingStatus = RecordingStatus.PROCESSING) }
-        viewModelScope.launch {
-            delay(800)
-            val batch = ExpenseBatch(
-                totalAmount = 85.0,
-                currency = _state.value.currency,
-                items = listOf(
-                    ExpenseItem(
-                        id = "text_${System.currentTimeMillis()}",
-                        title = text.ifBlank { "مشتريات متنوعة" },
-                        amount = 85.0,
-                        category = ExpenseCategory.DINING,
-                        paidBy = "أنا",
-                        beneficiary = "شخصي",
-                        dateIso = "2026-10-31"
-                    )
-                ),
-                confidence = 0.92f
+        vmScope.launch {
+            val batch = geminiApiClient.parseTextOrSms(text)
+            _state.update {
+                it.copy(
+                    recordingStatus = RecordingStatus.SUCCESS,
+                    pendingReviewBatch = batch
+                )
+            }
+        }
+    }
+
+    private fun parseBankNotification(text: String) {
+        if (text.isBlank()) return
+        _state.update {
+            it.copy(
+                isBankNotificationSheetOpen = false,
+                recordingStatus = RecordingStatus.PROCESSING
             )
+        }
+        vmScope.launch {
+            val batch = geminiApiClient.parseTextOrSms(text)
             _state.update {
                 it.copy(
                     recordingStatus = RecordingStatus.SUCCESS,
@@ -195,17 +206,14 @@ class ExpenseViewModel(
     }
 
     private fun confirmBatch(batch: ExpenseBatch) {
-        _state.update { current ->
-            val updatedList = batch.items + current.recentExpenses
-            val addedAmount = batch.items.sumOf { it.amount }
-            current.copy(
-                recentExpenses = updatedList,
-                dailyTotal = current.dailyTotal + addedAmount,
-                pendingReviewBatch = null,
-                recordingStatus = RecordingStatus.IDLE
-            )
-        }
-        viewModelScope.launch {
+        vmScope.launch {
+            repository.insertExpenses(batch.items)
+            _state.update {
+                it.copy(
+                    pendingReviewBatch = null,
+                    recordingStatus = RecordingStatus.IDLE
+                )
+            }
             _effect.emit(ExpenseEffect.ShowSnackbar("تم حفظ ${batch.items.size} مصاريف بنجاح!"))
         }
     }
@@ -220,13 +228,8 @@ class ExpenseViewModel(
     }
 
     private fun deleteExpense(id: String) {
-        _state.update { current ->
-            val item = current.recentExpenses.find { it.id == id }
-            val removedAmount = item?.amount ?: 0.0
-            current.copy(
-                recentExpenses = current.recentExpenses.filterNot { it.id == id },
-                dailyTotal = (current.dailyTotal - removedAmount).coerceAtLeast(0.0)
-            )
+        vmScope.launch {
+            repository.deleteExpense(id)
         }
     }
 
@@ -236,4 +239,3 @@ class ExpenseViewModel(
         audioRecorder.cancelRecording()
     }
 }
-

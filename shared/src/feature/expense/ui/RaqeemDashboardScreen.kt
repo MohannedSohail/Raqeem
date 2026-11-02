@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.moh.raqeem.project.feature.expense.*
 import org.moh.raqeem.project.theme.CoralExpense
+import org.moh.raqeem.project.theme.EmeraldDark
 import org.moh.raqeem.project.theme.EmeraldPrimary
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,6 +28,9 @@ fun RaqeemDashboardScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    var pastedSmsText by remember { mutableStateOf("") }
+    var inputApiKey by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         viewModel.effect.collect { effect ->
@@ -53,12 +57,34 @@ fun RaqeemDashboardScreen(
                             fontSize = 24.sp,
                             color = EmeraldPrimary
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "• تتبع المصاريف بالصوت",
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(
+                                    if (state.isOnlineAiActive) EmeraldPrimary.copy(alpha = 0.2f)
+                                    else MaterialTheme.colorScheme.surfaceVariant
+                                )
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = if (state.isOnlineAiActive) "Gemini 2.5 Flash ⚡" else "وضع ذكي محلي",
+                                fontSize = 11.sp,
+                                color = if (state.isOnlineAiActive) EmeraldPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                },
+                actions = {
+                    // Bank SMS Notification Paste Button
+                    IconButton(onClick = { viewModel.onAction(ExpenseAction.SetBankNotificationSheetVisible(true)) }) {
+                        Text("📩", fontSize = 20.sp)
+                    }
+
+                    // Settings / API Key Button
+                    IconButton(onClick = { viewModel.onAction(ExpenseAction.SetApiKeyDialogVisible(true)) }) {
+                        Text("⚙️", fontSize = 20.sp)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -103,6 +129,16 @@ fun RaqeemDashboardScreen(
                     weeklyBudget = state.weeklyBudgetTotal,
                     currency = state.currency
                 )
+            }
+
+            // 1.5 Weekly Analytics & Payer Distribution Card
+            state.weeklyAnalytics?.let { analytics ->
+                item {
+                    WeeklyAnalyticsCard(
+                        analytics = analytics,
+                        currency = state.currency
+                    )
+                }
             }
 
             // 2. Extracted Smart Expense Card (Animated popup)
@@ -153,7 +189,7 @@ fun RaqeemDashboardScreen(
                             .padding(vertical = 32.dp)
                     ) {
                         Text(
-                            text = "لا توجد مصاريف مسجلة لليوم.\nاضغط زر الميكروفون وتكلم بحرية!",
+                            text = "لا توجد مصاريف مسجلة لليوم.\nاضغط زر الميكروفون وتكلم بحرية أو الصق إشعار البنك!",
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                             lineHeight = 22.sp
@@ -224,5 +260,87 @@ fun RaqeemDashboardScreen(
             }
         }
     }
-}
 
+    // Bank Notification Paste Dialog
+    if (state.isBankNotificationSheetOpen) {
+        AlertDialog(
+            onDismissRequest = { viewModel.onAction(ExpenseAction.SetBankNotificationSheetVisible(false)) },
+            title = {
+                Text(text = "📩 استخراج من إشعار بنكي", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "الصق نص رسالة البنك (SMS) ليتم استخراج المصروف تلقائياً:",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = pastedSmsText,
+                        onValueChange = { pastedSmsText = it },
+                        placeholder = { Text("مثال: تم خصم مبلغ 65.00 ريال لدى كودو...") },
+                        modifier = Modifier.fillMaxWidth().height(110.dp),
+                        maxLines = 4
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.onAction(ExpenseAction.ParseBankNotification(pastedSmsText))
+                        pastedSmsText = ""
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary)
+                ) {
+                    Text("استخراج المصروف", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.onAction(ExpenseAction.SetBankNotificationSheetVisible(false)) }) {
+                    Text("إلغاء")
+                }
+            }
+        )
+    }
+
+    // Gemini API Key Dialog
+    if (state.isApiKeyDialogOpen) {
+        AlertDialog(
+            onDismissRequest = { viewModel.onAction(ExpenseAction.SetApiKeyDialogVisible(false)) },
+            title = {
+                Text(text = "⚡ إعداد Google Gemini 2.5 Flash", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "أدخل مفتاح Gemini API Key لتفعيل الفهم الصوتي الفوري عبر السحابة:",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = inputApiKey,
+                        onValueChange = { inputApiKey = it },
+                        placeholder = { Text("AIzaSy...") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.onAction(ExpenseAction.SaveApiKey(inputApiKey)) },
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary)
+                ) {
+                    Text("حفظ وتفعيل", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.onAction(ExpenseAction.SetApiKeyDialogVisible(false)) }) {
+                    Text("إغلاق")
+                }
+            }
+        )
+    }
+}
