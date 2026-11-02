@@ -14,7 +14,14 @@ actual class AudioRecorder {
     actual fun startRecording(outputFilePath: String) {
         try {
             stopRecording() // Clean up any active session safely
-            currentFilePath = outputFilePath
+            
+            val targetFile = if (outputFilePath.startsWith("/")) {
+                File(outputFilePath)
+            } else {
+                File(System.getProperty("java.io.tmpdir") ?: ".", outputFilePath)
+            }
+            targetFile.parentFile?.mkdirs()
+            currentFilePath = targetFile.absolutePath
             startTimeMs = System.currentTimeMillis()
 
             val mr = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -30,7 +37,7 @@ actual class AudioRecorder {
                 setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
                 setAudioEncodingBitRate(96000)
                 setAudioSamplingRate(44100)
-                setOutputFile(outputFilePath)
+                setOutputFile(targetFile.absolutePath)
                 prepare()
                 start()
             }
@@ -105,12 +112,13 @@ actual class AudioRecorder {
 
     private fun releaseRecorder() {
         try {
+            recorder?.reset()
             recorder?.release()
         } catch (e: Exception) {
-            // Safe release
+            // Ignore
+        } finally {
+            recorder = null
+            recording = false
         }
-        recorder = null
-        recording = false
     }
 }
-

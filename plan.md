@@ -1,59 +1,54 @@
-# خطة التنفيذ الفنية (plan.md) — تطبيق "رقيم Raqeem"
+# خطة التنفيذ التفصيلية (plan.md) — تطبيق "رقيم Raqeem"
+## مرحلة الانتقال إلى المحرك المحلي Whisper.cpp (Local Engine Migration)
 
-## 1. ملخص المراحل (Milestones Overview)
-
-```mermaid
-gantt
-    title خطة مراحل تطوير رقيم (CMP/KMP)
-    dateFormat  YYYY-MM-DD
-    section المرحلة 1: التأسيس والتصميم
-    نظام التصميم العربي M3 و RTL         :2026-11-01, 3d
-    مكونات الشاشة الرئيسية والزر الصوتي  :2026-11-04, 3d
-    section المرحلة 2: محرك الصوت والمنصات
-    عقد expect/actual لمسجل الصوت      :2026-11-07, 3d
-    تنفيذ Android MediaRecorder و AAC   :2026-11-10, 3d
-    section المرحلة 3: عقل الـ AI والـ Schemas
-    تكامل Gemini 2.5 Flash API          :2026-11-13, 3d
-    برومبت اللهجات واستخراج JSON المهيكل :2026-11-16, 2d
-    section المرحلة 4: التخزين وضمان الجودة
-    قاعدة البيانات المحلية Offline-First  :2026-11-18, 3d
-    اختبارات TDD وتدقيق الأداء والذاكرة :2026-11-21, 3d
-```
+## مصفوفة مسؤوليات السرب (Swarm Roles)
+| الوكيل (Agent) | المسؤولية الرئيسية |
+| :--- | :--- |
+| **`@ai-specialist`** | تصميم وتنفيذ معمارية `Whisper.cpp` المحلية وإعدادات نماذج GGML وتكامل العربية `ar`. |
+| **`@kmp-engineer`** | بناء واجهات KMP النقية (`LocalSpeechTranscriber` و `LocalDialectExpenseParser`) وتكييف مسجل الصوت 16kHz WAV. |
+| **`@ux-designer`** | تحديث شاشات Compose لعرض شارة "المحرك المحلي Whisper.cpp 🔒" ونافذة تخصيص النموذج المحلي. |
+| **`@db-architect`** | ضمان عمل التخزين المحلي Offline-First وحفظ المصادر المحلية في الكيانات. |
+| **`@qa-tester`** | تطبيق منهجية TDD وكتابة Unit Tests لاختبار استخراج النص واللهجات محلياً قبل الكود الفعلي. |
+| **`@security-perf`** | التحقق من الخصوصية (عدم وجود أي اتصال بالإنترنت)، منع تسريب الذاكرة، والتأكد من سرعة المعالجة. |
 
 ---
 
-## 2. تفصيل المهام والمسؤولين في السرب (Detailed Tasks Breakdown)
+## المراحل التنفيذية المتسلسلة (Sequential Phases)
 
-### المرحلة 1: نظام التصميم والواجهات المشتركة (المسؤول: `@ux-designer`)
-- [ ] **M1.1**: إعداد ثيم Material 3 يدعم الاتجاه الكامل من اليمين لليسار (`LayoutDirection.Rtl`).
-- [ ] **M1.2**: تجهيز لوحة ألوان مستوحاة من نمط Fintech الفاخر (Dark Slate / Deep Emerald Green للوفر والمصروفات).
-- [ ] **M1.3**: تصميم زر الميكروفون التفاعلي مع تأثير الحركة النبضية (Pulsing Waveform Animation) أثناء التسجيل.
-- [ ] **M1.4**: تصميم بطاقة التأكيد المنبثقة (Review Bottom Sheet) لمراجعة بنود المصروفات بلمسة واحدة.
+### المرحلة 1: بناء عقود وبيانات المحرك المحلي (AI & Core Contracts)
+- [x] توثيق النية في `intent.md` والمواصفات في `spec.md`.
+- [ ] إنشاء حزمة `org.moh.raqeem.project.ai.whisper`:
+  - `WhisperModelConfig.kt`: إعدادات النموذج المحلي (حجم النموذج، خيوط المعالجة، كود اللغة `ar`).
+  - `WhisperTranscribeResult.kt`: نتيجة التحويل المحلي.
+  - `LocalSpeechTranscriber.kt`: الواجهة الأساسية لتحويل الصوت محلياً.
+  - `LocalWhisperEngine.kt`: التنفيذ المحلي لمحرك Whisper.cpp في KMP مع محاكاة المعالجة العصبية المحلية فائقة السرعة ودعم دمج مكتبات JNI / Native C++.
 
-### المرحلة 2: محرك تسجيل الصوت متعدد المنصات (المسؤول: `@kmp-engineer`)
-- [ ] **M2.1**: إنشاء عقد `expect class AudioRecorder` في موديول `shared/src/commonMain`.
-- [ ] **M2.2**: تنفيذ مسجل الصوت في `shared/src@android` باستخدام `MediaRecorder` المدمج بصيغة AAC عالية الضغط.
-- [ ] **M2.3**: إضافة أذونات الميكروفون `android.permission.RECORD_AUDIO` في `androidApp/src/AndroidManifest.xml` ومعالجة طلب الإذن أثناء التشغيل (Runtime Permissions).
-- [ ] **M2.4**: توفير تدفق سعة الصوت `StateFlow<Float>` لتحديث واجهة المستخدم بالموجة الصوتية الحية.
+### المرحلة 2: محرك التحليل الدلالي واللهجات العربية المحلي (Local Dialect NLP)
+- [ ] إنشاء `LocalDialectExpenseParser.kt`:
+  - تحليل المصطلحات المالية الشائعة: (بنزين، كودو، سوبرماركت، صيدلية، مطعم، فواتير...).
+  - كشف العملات العربية (SAR, EGP, AED, KWD, USD).
+  - تحديد الدافع والمستفيد بدقة ("محمد دفع"، "أنا دفعت"، "حاسب عني").
+  - تقسيم التسجيل الصوتي المتعدد إلى بنود منفصلة.
 
-### المرحلة 3: تكامل الذكاء الاصطناعي مع Gemini 2.5 Flash (المسؤول: `@ai-specialist`)
-- [ ] **M3.1**: بناء عميل `GeminiApiClient` باستخدام `Ktor HTTP Client` للاتصال المباشر بنموذج `gemini-2.5-flash`.
-- [ ] **M3.2**: صياغة System Instruction المتخصص في فهم اللهجات العربية والمصطلحات المالية ("قطية"، "حاسبت"، "بنزين"، "عشى").
-- [ ] **M3.3**: تفعيل المخرجات المهيكلة بتمرير `response_mime_type: "application/json"` و `response_schema`.
-- [ ] **M3.4**: إضافة معالج بديل لإشعارات البنوك (SMS Text أو Screenshot OCR).
+### المرحلة 3: مسجل الصوت المتوافق مع Whisper.cpp (16kHz WAV Audio)
+- [ ] تحديث `AudioRecorder`:
+  - تسجيل بصيغة 16kHz Mono 16-bit PCM WAV (المعيار الرسمي لـ Whisper.cpp).
+  - ضبط حجم وتوقيت التسجيل بما يحفظ بطارية وذاكرة الجهاز.
 
-### المرحلة 4: قاعدة البيانات وإدارة الحالة (المسؤول: `@db-architect` و `@kmp-engineer`)
-- [ ] **M4.1**: إعداد `ExpenseRepository` المحلي مع دعم الحفظ الفوري والاستعلام عن إجمالي اليوم ومجموع الأسبوع.
-- [ ] **M4.2**: ربط دورة الـ MVI في `ExpenseViewModel`:
-  - `ExpenseIntent.StartRecording`
-  - `ExpenseIntent.StopAndProcessVoice`
-  - `ExpenseIntent.ConfirmExpenseBatch`
-  - `ExpenseIntent.DeleteExpenseItem`
-- [ ] **M4.3**: وضع آلية حفظ مسودة الصوت في حال عدم وجود اتصال لإعادة إرسالها تلقائياً.
+### المرحلة 4: اختبارات الـ TDD (Unit Tests First)
+- [ ] كتابة `LocalWhisperEngineTest.kt`: اختبار تحويل الصوت المحلي وحالات النجاح والخطأ.
+- [ ] كتابة `LocalDialectExpenseParserTest.kt`: اختبار تفكيك اللهجات السعودية، المصرية، والشامية.
+- [ ] تحديث اختبارات `ExpenseViewModelTest.kt` لتعمل بالكامل بالوضع المحلي مع التأكد من عدم طلب أي مفاتيح سحابية.
 
-### المرحلة 5: الاختبارات والأداء والأمان (المسؤول: `@qa-tester` و `@security-perf`)
-- [ ] **M5.1**: كتابة Unit Tests لمنطق فك تشفير JSON إلى كائنات Kotlin والتحقق من المبالغ والتصنيفات.
-- [ ] **M5.2**: فحص عدم وجود تسريب للذاكرة عند فتح وغلق الميكروفون عدة مرات.
-- [ ] **M5.3**: عزل الـ API Keys في ملف `local.properties` أو البيئة الآمنة لمنع تسريبها.
-- [ ] **M5.4**: تجربة التشغيل الفعلي على محاكي Android وجهاز حقيقي عبر Android Studio.
+### المرحلة 5: ربط واجهات المستخدم والـ MVI (Compose Multiplatform & MVI)
+- [ ] تعديل `ExpenseState` و `ExpenseViewModel`:
+  - استبدال التبعية الإلزامية للـ Online API بـ `LocalSpeechTranscriber`.
+  - إضافة حالة `localEngineModel` وحالة `isOfflineLocalMode = true`.
+- [ ] تحديث شاشة لوحة التحكم `RaqeemDashboardScreen`:
+  - إظهار شارة "محرك Whisper.cpp محلي 🔒" أعلى الشاشة لتعزيز ثقة المستخدم.
+- [ ] تحديث شاشة الإعدادات `GeminiSettingsDialog` لتصبح `AiEngineSettingsDialog` (اختيار حجم نموذج Whisper المحلي: Tiny / Base، مع إمكانية التبديل الاختياري للسحابة).
 
+### المرحلة 6: المراجعة وتأكيد البناء (Review & Verification)
+- [ ] تشغيل اختبارات KMP والتأكد من اجتيازها بنسبة 100%.
+- [ ] فحص كود الأندرويد والـ Pure Kotlin لضمان عدم وجود تسريب للذاكرة.
+- [ ] توثيق المراجعة في `review.md`.

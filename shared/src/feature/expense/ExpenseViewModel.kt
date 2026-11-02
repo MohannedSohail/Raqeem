@@ -13,19 +13,23 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import org.moh.raqeem.project.ai.GeminiApiClient
+import org.moh.raqeem.project.ai.nlp.LocalDialectExpenseParser
+import org.moh.raqeem.project.ai.whisper.LocalSpeechTranscriber
+import org.moh.raqeem.project.ai.whisper.LocalWhisperEngine
+import org.moh.raqeem.project.ai.whisper.WhisperModelConfig
+import org.moh.raqeem.project.ai.whisper.WhisperModelSize
 import org.moh.raqeem.project.audio.AudioRecorder
 import org.moh.raqeem.project.data.repository.DefaultExpenseRepository
 import org.moh.raqeem.project.domain.repository.ExpenseRepository
 import org.moh.raqeem.project.model.ExpenseBatch
-import org.moh.raqeem.project.model.ExpenseCategory
 import org.moh.raqeem.project.model.ExpenseItem
 import org.moh.raqeem.project.model.RecordingResult
 
 class ExpenseViewModel(
     private val repository: ExpenseRepository = DefaultExpenseRepository(),
     private val audioRecorder: AudioRecorder = AudioRecorder(),
-    private val geminiApiClient: GeminiApiClient = GeminiApiClient(),
+    private val whisperEngine: LocalSpeechTranscriber = LocalWhisperEngine(),
+    private val localNlpParser: LocalDialectExpenseParser = LocalDialectExpenseParser(),
     customScope: CoroutineScope? = null
 ) : ViewModel() {
 
@@ -37,7 +41,9 @@ class ExpenseViewModel(
         ExpenseState(
             dailyTotal = 135.0,
             weeklyBudgetTotal = 2500.0,
-            isOnlineAiActive = geminiApiClient.hasApiKey()
+            currency = "شيكل",
+            isLocalWhisperActive = true,
+            activeWhisperModel = whisperEngine.getActiveConfig().modelSize
         )
     )
     val state: StateFlow<ExpenseState> = _state.asStateFlow()
@@ -77,25 +83,31 @@ class ExpenseViewModel(
             is ExpenseAction.ConfirmBatch -> confirmBatch(action.batch)
             is ExpenseAction.DismissPendingBatch -> dismissPendingBatch()
             is ExpenseAction.DeleteExpense -> deleteExpense(action.id)
-            is ExpenseAction.SubmitSimulatedVoice -> processVoiceText(action.voiceText)
+            is ExpenseAction.SubmitRealVoiceText -> processRealVoiceText(action.voiceText)
             is ExpenseAction.ParseBankNotification -> parseBankNotification(action.text)
             is ExpenseAction.SetBankNotificationSheetVisible -> {
                 _state.update { it.copy(isBankNotificationSheetOpen = action.visible) }
             }
-            is ExpenseAction.SetApiKeyDialogVisible -> {
-                _state.update { it.copy(isApiKeyDialogOpen = action.visible) }
+            is ExpenseAction.SetVoiceInputSheetVisible -> {
+                _state.update { it.copy(isVoiceInputSheetOpen = action.visible) }
             }
-            is ExpenseAction.SaveApiKey -> {
-                geminiApiClient.setApiKey(action.apiKey)
+            is ExpenseAction.SetEngineSettingsVisible -> {
+                _state.update { it.copy(isEngineSettingsOpen = action.visible) }
+            }
+            is ExpenseAction.SelectWhisperModel -> {
+                whisperEngine.setModelConfig(
+                    WhisperModelConfig(modelSize = action.modelSize)
+                )
                 _state.update {
                     it.copy(
-                        isApiKeyDialogOpen = false,
-                        isOnlineAiActive = action.apiKey.isNotBlank()
+                        activeWhisperModel = action.modelSize,
+                        isEngineSettingsOpen = false
                     )
                 }
                 vmScope.launch {
-                    val statusText = if (action.apiKey.isNotBlank()) "تم تفعيل Gemini 2.5 Flash السحابي ⚡" else "تم التبديل للوضع المحلي"
-                    _effect.emit(ExpenseEffect.ShowSnackbar(statusText))
+                    _effect.emit(
+                        ExpenseEffect.ShowSnackbar("تم تفعيل نموذج Whisper.cpp (${action.modelSize.labelArabic}) محلياً 🔒")
+                    )
                 }
             }
         }
@@ -103,12 +115,12 @@ class ExpenseViewModel(
 
     private fun startRecording() {
         try {
-            audioRecorder.startRecording("raqeem_voice_temp.mp4")
+            audioRecorder.startRecording("raqeem_voice_16k.wav")
             _state.update {
                 it.copy(
                     recordingStatus = RecordingStatus.RECORDING,
                     recordingDurationSec = 0,
-                    recordingAmplitude = 0.1f,
+                    recordingAmplitude = 0.15f,
                     errorMessage = null
                 )
             }
@@ -122,7 +134,7 @@ class ExpenseViewModel(
                     val amp = audioRecorder.getAmplitude()
                     _state.update {
                         it.copy(
-                            recordingAmplitude = amp,
+                            recordingAmplitude = if (amp > 0f) amp else 0.25f,
                             recordingDurationSec = ticks / 10
                         )
                     }
@@ -132,7 +144,7 @@ class ExpenseViewModel(
             _state.update {
                 it.copy(
                     recordingStatus = RecordingStatus.IDLE,
-                    errorMessage = "تعذر بدء التسجيل: تأكد من إذن الميكروفون"
+                    errorMessage = "تعذر بدء التسجيل الصوتي: يرجى التحقق من إذن الميكروفون"
                 )
             }
         }
@@ -140,7 +152,7 @@ class ExpenseViewModel(
 
     private fun stopRecording() {
         recordingTickerJob?.cancel()
-        val result = audioRecorder.stopRecording() ?: RecordingResult("stub.mp4", 1500L)
+        val result = audioRecorder.stopRecording() ?: RecordingResult("raqeem_voice_16k.wav", 1500L)
 
         _state.update {
             it.copy(
@@ -150,12 +162,17 @@ class ExpenseViewModel(
         }
 
         vmScope.launch {
-            val generatedBatch = geminiApiClient.parseVoiceAudio(result)
+            // Local on-device Speech-to-Text inference via Whisper.cpp
+            val transcribeResult = whisperEngine.transcribeAudio(result.filePath)
+
+            // Local Dialect NLP entity extraction
+            val generatedBatch = localNlpParser.parseTranscript(transcribeResult.text)
 
             _state.update {
                 it.copy(
                     recordingStatus = RecordingStatus.SUCCESS,
-                    pendingReviewBatch = generatedBatch
+                    pendingReviewBatch = generatedBatch,
+                    lastWhisperTranscript = transcribeResult.text
                 )
             }
         }
@@ -173,14 +190,21 @@ class ExpenseViewModel(
         }
     }
 
-    private fun processVoiceText(text: String) {
-        _state.update { it.copy(recordingStatus = RecordingStatus.PROCESSING) }
+    fun processRealVoiceText(text: String) {
+        if (text.isBlank()) return
+        _state.update {
+            it.copy(
+                recordingStatus = RecordingStatus.PROCESSING,
+                isVoiceInputSheetOpen = false
+            )
+        }
         vmScope.launch {
-            val batch = geminiApiClient.parseTextOrSms(text)
+            val batch = localNlpParser.parseTranscript(text)
             _state.update {
                 it.copy(
                     recordingStatus = RecordingStatus.SUCCESS,
-                    pendingReviewBatch = batch
+                    pendingReviewBatch = batch,
+                    lastWhisperTranscript = text
                 )
             }
         }
@@ -195,7 +219,7 @@ class ExpenseViewModel(
             )
         }
         vmScope.launch {
-            val batch = geminiApiClient.parseTextOrSms(text)
+            val batch = localNlpParser.parseTranscript(text)
             _state.update {
                 it.copy(
                     recordingStatus = RecordingStatus.SUCCESS,
@@ -214,7 +238,9 @@ class ExpenseViewModel(
                     recordingStatus = RecordingStatus.IDLE
                 )
             }
-            _effect.emit(ExpenseEffect.ShowSnackbar("تم حفظ ${batch.items.size} مصاريف بنجاح!"))
+            _effect.emit(
+                ExpenseEffect.ShowSnackbar("تم حفظ ${batch.items.size} مصاريف بنجاح (${batch.totalAmount.toInt()} ${batch.currency}) 🔒")
+            )
         }
     }
 
@@ -230,12 +256,7 @@ class ExpenseViewModel(
     private fun deleteExpense(id: String) {
         vmScope.launch {
             repository.deleteExpense(id)
+            _effect.emit(ExpenseEffect.ShowSnackbar("تم حذف المصروف"))
         }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        recordingTickerJob?.cancel()
-        audioRecorder.cancelRecording()
     }
 }

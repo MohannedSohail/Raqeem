@@ -1,14 +1,14 @@
 package org.moh.raqeem.project.model
 
-enum class ExpenseCategory(val arabicLabel: String, val iconEmoji: String) {
-    GROCERIES("بقالة وتموينات", "🛒"),
-    DINING("مطاعم ومقاهي", "☕"),
-    TRANSPORTATION("مواصلات وبنزين", "🚗"),
-    HEALTHCARE("صحة وعلاج", "💊"),
-    HOME_UTILITIES("فواتير ومنزل", "🏠"),
-    SHOPPING("تسوق وتجزئة", "🛍️"),
-    ENTERTAINMENT("ترفيه وتسلية", "🎮"),
-    OTHER("أخرى", "📦")
+enum class ExpenseCategory(val arabicLabel: String, val categoryKey: String) {
+    GROCERIES("بقالة وتموينات", "groceries"),
+    DINING("مطاعم ومقاهي", "dining"),
+    TRANSPORTATION("مواصلات وبنزين", "transportation"),
+    HEALTHCARE("صحة وعلاج", "healthcare"),
+    HOME_UTILITIES("فواتير ومنزل", "utilities"),
+    SHOPPING("تسوق وتجزئة", "shopping"),
+    ENTERTAINMENT("ترفيه وتسلية", "entertainment"),
+    OTHER("أخرى", "other")
 }
 
 data class ExpenseItem(
@@ -19,20 +19,21 @@ data class ExpenseItem(
     val paidBy: String = "أنا",
     val beneficiary: String = "شخصي",
     val dateIso: String,
-    val notes: String? = null
+    val notes: String? = null,
+    val rawVoiceSnippet: String? = null
 )
 
 data class ExpenseBatch(
     val totalAmount: Double,
-    val currency: String = "SAR",
+    val currency: String = "شيكل",
     val items: List<ExpenseItem>,
     val notes: String? = null,
-    val confidence: Float = 0.95f
+    val confidence: Float = 0.95f,
+    val sourceEngine: String = "Whisper.cpp (Local Offline)"
 )
 
 data class RecordingResult(
     val filePath: String,
     val durationMs: Long,
-    val mimeType: String = "audio/mp4"
+    val mimeType: String = "audio/wav"
 )
-

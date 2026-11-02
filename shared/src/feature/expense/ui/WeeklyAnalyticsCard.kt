@@ -2,6 +2,7 @@ package org.moh.raqeem.project.feature.expense.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -18,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.moh.raqeem.project.domain.model.WeeklyAnalytics
 import org.moh.raqeem.project.theme.BluePayer
+import org.moh.raqeem.project.theme.CategoryIcon
 import org.moh.raqeem.project.theme.CoralExpense
 import org.moh.raqeem.project.theme.EmeraldPrimary
 
@@ -41,7 +43,12 @@ fun WeeklyAnalyticsCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "📈", fontSize = 18.sp)
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(EmeraldPrimary)
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "تحليلات الأسبوع ومن دفع",
@@ -68,8 +75,12 @@ fun WeeklyAnalyticsCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = category.iconEmoji, fontSize = 16.sp)
-                        Spacer(modifier = Modifier.width(6.dp))
+                        CategoryIcon(
+                            category = category,
+                            color = EmeraldPrimary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "الأعلى صرفاً: ${category.arabicLabel}",
                             fontSize = 13.sp,
@@ -109,30 +120,18 @@ fun WeeklyAnalyticsCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))
-                            .background(
-                                if (payer == "أنا") EmeraldPrimary.copy(alpha = 0.15f)
-                                else BluePayer.copy(alpha = 0.15f)
-                            )
+                            .background(BluePayer.copy(alpha = 0.15f))
                             .padding(horizontal = 10.dp, vertical = 6.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "$payer: ",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
-                                color = if (payer == "أنا") EmeraldPrimary else BluePayer
-                            )
-                            Text(
-                                text = "${amount.toInt()} $currency",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
+                        Text(
+                            text = "$payer: ${amount.toInt()} $currency",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = BluePayer
+                        )
                     }
                 }
             }
         }
     }
 }
-

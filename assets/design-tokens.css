@@ -1,0 +1,41 @@
+/**
+ * Raqeem Design Tokens (CSS Variables)
+ * Generated from docs/brand-guidelines.md
+ */
+
+:root {
+  /* Brand Primary (Emerald) */
+  --raqeem-primary: #10B981;
+  --raqeem-primary-dark: #059669;
+  --raqeem-primary-light: #34D399;
+
+  /* Brand Secondary (Blue Payer) */
+  --raqeem-secondary: #3B82F6;
+  --raqeem-secondary-dark: #1D4ED8;
+  --raqeem-secondary-light: #93C5FD;
+
+  /* Brand Accent (Coral Expense) */
+  --raqeem-accent: #F43F5E;
+  --raqeem-accent-dark: #BE123C;
+  --raqeem-accent-light: #FDA4AF;
+
+  /* Obsidian Slate Surfaces */
+  --raqeem-bg-dark: #0F172A;
+  --raqeem-surface-dark: #1E293B;
+  --raqeem-surface-card: #334155;
+  --raqeem-text-primary: #F8FAFC;
+  --raqeem-text-secondary: #94A3B8;
+  --raqeem-border-slate: #475569;
+
+  /* Typography */
+  --raqeem-font-heading: 'Cairo', 'IBM Plex Sans Arabic', -apple-system, sans-serif;
+  --raqeem-font-body: 'Cairo', 'IBM Plex Sans Arabic', -apple-system, sans-serif;
+  --raqeem-font-mono: 'JetBrains Mono', monospace;
+
+  /* Sizes */
+  --raqeem-radius-sm: 8px;
+  --raqeem-radius-md: 16px;
+  --raqeem-radius-lg: 24px;
+  --raqeem-radius-full: 9999px;
+}
+

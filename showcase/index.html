@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>استعراض رقيم Raqeem — 60 FPS Showcase</title>
+  <link rel="stylesheet" href="../assets/design-tokens.css">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: var(--raqeem-bg-dark, #0F172A);
+      color: var(--raqeem-text-primary, #F8FAFC);
+      font-family: 'Cairo', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem;
+      overflow-x: hidden;
+    }
+    .header {
+      text-align: center;
+      max-width: 800px;
+      margin-bottom: 2rem;
+    }
+    .badge {
+      display: inline-block;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--raqeem-primary, #10B981);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      padding: 0.35rem 1rem;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      letter-spacing: 0.5px;
+    }
+    h1 {
+      font-size: 2.6rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #10B981, #34D399, #3B82F6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+    }
+    p.subtitle {
+      color: var(--raqeem-text-secondary, #94A3B8);
+      font-size: 1.15rem;
+      line-height: 1.6;
+    }
+    .video-container {
+      width: 100%;
+      max-width: 1040px;
+      background: var(--raqeem-surface-dark, #1E293B);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 40px rgba(16, 185, 129, 0.15);
+      overflow: hidden;
+      position: relative;
+      margin-bottom: 3rem;
+    }
+    video {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 20px;
+    }
+    .screens-grid {
+      width: 100%;
+      max-width: 1100px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+    .card {
+      background: var(--raqeem-surface-dark, #1E293B);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 1.25rem;
+      transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+    .card:hover {
+      transform: translateY(-6px);
+      border-color: rgba(16, 185, 129, 0.4);
+      box-shadow: 0 12px 30px rgba(16, 185, 129, 0.15);
+    }
+    .card img {
+      width: 100%;
+      border-radius: 12px;
+      margin-bottom: 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .card h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #F8FAFC;
+      margin-bottom: 0.35rem;
+    }
+    .card p {
+      font-size: 0.9rem;
+      color: #94A3B8;
+      line-height: 1.5;
+    }
+    .footer {
+      margin-top: 3rem;
+      color: #64748B;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="badge">🎬 استعراض فائق السلاسة • 60 FPS • Full HD 1080p</div>
+    <h1>رقيم Raqeem — العرض الإطلاقي الرسمي</h1>
+    <p class="subtitle">تتبع المصاريف الذكي بالصوت واللهجات العربية • مبني بأحدث تقنيات Compose Multiplatform مع نموذج Gemini 2.5 Flash</p>
+  </div>
+
+  <div class="video-container">
+    <video controls autoplay loop playsinline poster="../raqeem_showcase_poster.jpg">
+      <source src="../raqeem_showcase_60fps.mp4" type="video/mp4">
+      متصفحك لا يدعم تشغيل الفيديو.
+    </video>
+  </div>
+
+  <h2 style="font-size: 1.8rem; font-weight: 800; margin-bottom: 1.5rem; text-align: center;">معرض شاشات التطبيق الكاملة</h2>
+
+  <div class="screens-grid">
+    <div class="card">
+      <img src="../raqeem_screen_splash.jpg" alt="Splash Screen">
+      <h3>1. شاشة البداية (Splash Screen)</h3>
+      <p>شعار رقيم المتوهج بالهوية العربية الفاخرة مع وميض النبض الصوتي والتحميل السلس.</p>
+    </div>
+
+    <div class="card">
+      <img src="../raqeem_screen_onboarding.jpg" alt="Onboarding Flow">
+      <h3>2. شاشات الترحيب (Onboarding)</h3>
+      <p>تجربة دخول متكاملة تشرح التسجيل الصوتي، رادار الميزانية، وخصوصية البيانات.</p>
+    </div>
+
+    <div class="card">
+      <img src="../raqeem_screen_dashboard.jpg" alt="Main Dashboard">
+      <h3>3. لوحة التحكم الرئيسية (Dashboard)</h3>
+      <p>نبض الميزانية الأسبوعي، قائمة المصاريف التفاعلية، ومؤشر "مين دفع كم".</p>
+    </div>
+
+    <div class="card">
+      <img src="../raqeem_screen_voice_review.jpg" alt="Voice Review">
+      <h3>4. التسجيل الصوتي والمراجعة (Voice Review)</h3>
+      <p>ميكروفون ديناميكي متفاعل مع شدة الصوت وبطاقة مراجعة البنود المستخرجة بـ Gemini.</p>
+    </div>
+
+    <div class="card">
+      <img src="../raqeem_screen_bank_sms.jpg" alt="Bank SMS Dialog">
+      <h3>5. تفكيك رسائل البنوك (Bank SMS)</h3>
+      <p>لصق إشعارات السحب من كافة البنوك السعودية والخليجية واستخراج المبالغ والتصنيف فوراً.</p>
+    </div>
+
+    <div class="card">
+      <img src="../raqeem_screen_gemini_settings.jpg" alt="Gemini Settings">
+      <h3>6. إعدادات السحابة والذكاء الاصطناعي</h3>
+      <p>تحكم كامل بمفتاح الـ API، اختيار النموذج، وتخصيص اللهجة والخصوصية.</p>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>مشروع رقيم Raqeem © 2026 — تصميم وتطوير متكامل بواسطة أحدث حزم Compose Multiplatform و Google Gemini</p>
+  </div>
+
+</body>
+</html>
+

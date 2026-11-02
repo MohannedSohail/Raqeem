@@ -1,5 +1,6 @@
 package org.moh.raqeem.project.feature.expense
 
+import org.moh.raqeem.project.ai.whisper.WhisperModelSize
 import org.moh.raqeem.project.domain.model.WeeklyAnalytics
 import org.moh.raqeem.project.model.ExpenseBatch
 import org.moh.raqeem.project.model.ExpenseItem
@@ -12,18 +13,21 @@ enum class RecordingStatus {
 }
 
 data class ExpenseState(
-    val dailyTotal: Double = 0.0,
+    val dailyTotal: Double = 135.0,
     val weeklyBudgetTotal: Double = 2500.0,
     val weeklyAnalytics: WeeklyAnalytics? = null,
-    val currency: String = "SAR",
+    val currency: String = "شيكل",
     val recordingStatus: RecordingStatus = RecordingStatus.IDLE,
     val recordingAmplitude: Float = 0f,
     val recordingDurationSec: Int = 0,
     val pendingReviewBatch: ExpenseBatch? = null,
     val recentExpenses: List<ExpenseItem> = emptyList(),
     val isBankNotificationSheetOpen: Boolean = false,
-    val isApiKeyDialogOpen: Boolean = false,
-    val isOnlineAiActive: Boolean = false,
+    val isVoiceInputSheetOpen: Boolean = false,
+    val isEngineSettingsOpen: Boolean = false,
+    val isLocalWhisperActive: Boolean = true,
+    val activeWhisperModel: WhisperModelSize = WhisperModelSize.TINY,
+    val lastWhisperTranscript: String? = null,
     val errorMessage: String? = null
 )
 
@@ -34,11 +38,12 @@ sealed interface ExpenseAction {
     data class ConfirmBatch(val batch: ExpenseBatch) : ExpenseAction
     data object DismissPendingBatch : ExpenseAction
     data class DeleteExpense(val id: String) : ExpenseAction
-    data class SubmitSimulatedVoice(val voiceText: String) : ExpenseAction
+    data class SubmitRealVoiceText(val voiceText: String) : ExpenseAction
     data class ParseBankNotification(val text: String) : ExpenseAction
     data class SetBankNotificationSheetVisible(val visible: Boolean) : ExpenseAction
-    data class SetApiKeyDialogVisible(val visible: Boolean) : ExpenseAction
-    data class SaveApiKey(val apiKey: String) : ExpenseAction
+    data class SetVoiceInputSheetVisible(val visible: Boolean) : ExpenseAction
+    data class SetEngineSettingsVisible(val visible: Boolean) : ExpenseAction
+    data class SelectWhisperModel(val modelSize: WhisperModelSize) : ExpenseAction
 }
 
 sealed interface ExpenseEffect {

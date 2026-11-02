@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import org.moh.raqeem.project.feature.expense.RecordingStatus
 import org.moh.raqeem.project.theme.CoralExpense
 import org.moh.raqeem.project.theme.EmeraldPrimary
+import org.moh.raqeem.project.theme.MicrophoneVectorIcon
 
 @Composable
 fun VoiceRecordButton(
@@ -34,13 +36,12 @@ fun VoiceRecordButton(
     val isRecording = status == RecordingStatus.RECORDING
     val isProcessing = status == RecordingStatus.PROCESSING
 
-    // Infinite wave pulse animation when recording
     val infiniteTransition = rememberInfiniteTransition()
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (isRecording) 1.25f + (amplitude * 0.4f) else 1f,
+        targetValue = 1f + (amplitude.coerceIn(0.1f, 1f) * 0.45f),
         animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = FastOutSlowInEasing),
+            animation = tween(400, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         )
     )
@@ -53,19 +54,19 @@ fun VoiceRecordButton(
     ) {
         if (isRecording) {
             Text(
-                text = "جاري التسجيل... 00:${durationSec.toString().padStart(2, '0')}",
+                text = "جاري الاستماع... ${durationSec} ثانية",
                 color = CoralExpense,
                 fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                modifier = Modifier.padding(bottom = 12.dp)
+                fontSize = 13.sp,
+                modifier = Modifier.padding(bottom = 8.dp)
             )
         } else if (isProcessing) {
             Text(
-                text = "جاري الفهم بالذكاء الاصطناعي...",
+                text = "تحليل فوري محلياً عبر Whisper.cpp...",
                 color = EmeraldPrimary,
-                fontWeight = FontWeight.Medium,
-                fontSize = 14.sp,
-                modifier = Modifier.padding(bottom = 12.dp)
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(bottom = 8.dp)
             )
         } else {
             Text(
@@ -118,17 +119,25 @@ fun VoiceRecordButton(
                 if (isProcessing) {
                     CircularProgressIndicator(
                         color = Color.White,
-                        modifier = Modifier.size(32.dp),
+                        modifier = Modifier.size(30.dp),
                         strokeWidth = 3.dp
                     )
+                } else if (isRecording) {
+                    // Crisp Stop Square Vector
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color.White)
+                    )
                 } else {
-                    Text(
-                        text = if (isRecording) "⏹️" else "🎙️",
-                        fontSize = 28.sp
+                    // Crisp Microphone Vector (No Emojis!)
+                    MicrophoneVectorIcon(
+                        color = Color.White,
+                        modifier = Modifier.size(30.dp)
                     )
                 }
             }
         }
     }
 }
-

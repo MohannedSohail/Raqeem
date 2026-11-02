@@ -13,8 +13,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.moh.raqeem.project.model.ExpenseBatch
+import org.moh.raqeem.project.theme.CategoryIcon
 import org.moh.raqeem.project.theme.CoralExpense
 import org.moh.raqeem.project.theme.EmeraldPrimary
+import org.moh.raqeem.project.theme.LockShieldIcon
+import org.moh.raqeem.project.theme.MicrophoneVectorIcon
 
 @Composable
 fun ExpenseReviewCard(
@@ -38,10 +41,13 @@ fun ExpenseReviewCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "✨", fontSize = 20.sp)
+                    MicrophoneVectorIcon(
+                        color = EmeraldPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "المصاريف المستخرجة صوتياً",
+                        text = "المصاريف المستخرجة محلياً",
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
                         color = MaterialTheme.colorScheme.onSurface
@@ -63,6 +69,29 @@ fun ExpenseReviewCard(
                 }
             }
 
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Engine badge with vector lock icon
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(EmeraldPrimary.copy(alpha = 0.1f))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                LockShieldIcon(
+                    color = EmeraldPrimary,
+                    modifier = Modifier.size(13.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = batch.sourceEngine,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = EmeraldPrimary
+                )
+            }
+
             Spacer(modifier = Modifier.height(14.dp))
 
             // Extracted items list
@@ -70,13 +99,28 @@ fun ExpenseReviewCard(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 6.dp),
+                        .padding(vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = item.category.iconEmoji, fontSize = 20.sp)
-                        Spacer(modifier = Modifier.width(10.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MaterialTheme.colorScheme.surface),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CategoryIcon(
+                                category = item.category,
+                                color = EmeraldPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
                                 text = item.title,
@@ -85,7 +129,7 @@ fun ExpenseReviewCard(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "دفعها: ${item.paidBy} • ${item.category.arabicLabel}",
+                                text = "دفعها: ${item.paidBy} • مستفيد: ${item.beneficiary} • ${item.category.arabicLabel}",
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
@@ -93,7 +137,7 @@ fun ExpenseReviewCard(
                     }
 
                     Text(
-                        text = "${item.amount} ${batch.currency}",
+                        text = "${item.amount.toInt()} ${batch.currency}",
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
                         color = CoralExpense
@@ -145,4 +189,3 @@ fun ExpenseReviewCard(
         }
     }
 }
-
